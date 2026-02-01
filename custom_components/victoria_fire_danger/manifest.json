@@ -1,13 +1,13 @@
 {
-    "domain": "victoria_fire_danger",
-    "name": "Victoria Fire Danger Ratings",
-    "after_dependencies": ["http"],
-    "codeowners": ["@joelg12345"],
-    "config_flow": true,
-    "documentation": "https://github.com/joelg12345/victoria-fire-danger",
-    "issue_tracker": "https://github.com/joelg12345/victoria-fire-danger/issues",
-    "integration_type": "service",
-    "iot_class": "cloud_polling",
-    "requirements": ["beautifulsoup4"],
-    "version": "1.0.0"
+  "domain": "victoria_fire_danger",
+  "name": "Victoria Fire Danger Ratings",
+  "after_dependencies": ["http"],
+  "codeowners": ["@joelg12345"],
+  "config_flow": true,
+  "documentation": "https://github.com/joelg12345/victoria-fire-danger",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/joelg12345/victoria-fire-danger/issues",
+  "requirements": ["beautifulsoup4"],
+  "version": "1.0.4"
 }
