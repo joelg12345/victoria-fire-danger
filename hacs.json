@@ -1,8 +1,7 @@
 {
-  "name": "Victoria Fire Danger",
+  "name": "Victoria Fire Danger Ratings",
+  "country": "AU",
   "content_in_root": false,
-  "domains": ["sensor"],
-  "homeassistant": "2023.12.0",
   "render_readme": true,
-  "type": "integration"
+  "homeassistant": "2023.12.0"
 }
