@@ -1,0 +1,8 @@
+{
+  "name": "Victoria Fire Danger",
+  "content_in_root": false,
+  "domains": ["sensor"],
+  "homeassistant": "2023.12.0",
+  "render_readme": true,
+  "type": "integration"
+}
