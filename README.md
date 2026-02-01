@@ -1,79 +1,120 @@
-# Victoria Fire Danger Ratings for Home Assistant
+# 🔥 Victoria Fire Danger Ratings for Home Assistant
 
-An unofficial Home Assistant integration and custom frontend card that fetches official fire danger ratings and total fire ban data directly from the Victoria CFA RSS feeds. 
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![GitHub release](https://img.shields.io/github/release/joelg12345/victoria-fire-danger.svg)](https://github.com/joelg12345/victoria-fire-danger/releases)
+[![License](https://img.shields.io/github/license/joelg12345/victoria-fire-danger.svg)](LICENSE)
 
-This package provides high-accuracy sensors for all 9 Victorian districts and a specialized "roadside-style" gauge card for your dashboard.
+A custom Home Assistant integration and custom frontend card that fetches official fire danger ratings and total fire ban data directly from the Victoria CFA. Features a specialized "roadside-style" gauge card matching the official Australian Fire Danger Rating (AFDRS) signage!
 
-## Features
-- Real-time Data: Polled from CFA every 30 minutes.
-- 4-Day Forecast: Dedicated sensors for Today, Tomorrow, Day 3, and Day 4.
-- District Support: Monitor any or all fire districts in Victoria.
-- Custom Gauge Card: A high-visibility Lovelace card matching the official Australian Fire Danger Rating (AFDRS) signage.
-- Dynamic Icons: Theme-aware icons that change based on the severity of the rating.
+![Victoria Fire Danger Card](https://raw.githubusercontent.com/joelg12345/victoria-fire-danger/main/card-preview.png)
 
 ---
 
-## Monitored Districts
-The integration provides data for the following CFA districts:
+## ✨ Features
 
-| District | Sensor Prefix |
-| :--- | :--- |
-| Central | `sensor.central_` |
-| North Central | `sensor.north_central_` |
-| Northern Country | `sensor.northern_country_` |
-| North East | `sensor.north_east_` |
-| East Gippsland | `sensor.east_gippsland_` |
-| West Gippsland | `sensor.west_gippsland_` |
-| Wimmera | `sensor.wimmera_` |
-| South West | `sensor.south_west_` |
-| Mallee | `sensor.mallee_` |
+- 🎨 **Beautiful Custom Card**: A high-visibility Lovelace card matching official CFA roadside signage.
+- 🎯 **Dynamic Needle**: The gauge needle moves automatically to match the rating (MODERATE → HIGH → EXTREME → CATASTROPHIC).
+- 🚫 **Total Fire Ban Alerts**: Displays prominent warnings when a ban is declared for your district.
+- 📅 **4-Day Forecast**: Dedicated sensors for Today, Tomorrow, Day 3, and Day 4.
+- 🌏 **All 9 Victorian Districts**: Full support for all CFA fire weather areas.
+- ⚙️ **Easy Configuration**: User-friendly dropdown UI for district selection.
+- 🔄 **Auto-Updates**: Data polled from CFA every 30 minutes.
 
 ---
 
-## Installation
+## 🚀 Quick Start Guide
 
-### 1. Integration (The Sensors)
-1. Copy the `custom_components/victoria_fire_danger` folder into your Home Assistant `/config/custom_components/` directory.
-2. **Restart Home Assistant.**
-3. Go to **Settings > Devices & Services > Add Integration**.
-4. Search for **Victoria Fire Danger Ratings** and follow the prompts.
+### 1. Installation
 
-### 2. Frontend (The Card)
-1. Download `vic-fire-danger-card.js` from the `dist/` folder of this repository.
-2. Upload the file to your Home Assistant `/config/www/` folder.
-3. Add the resource to your Dashboard:
-   - Go to **Settings > Dashboards**.
-   - Click the **three dots** (top right) > **Resources**.
-   - Click **Add Resource**.
-   - Enter `/local/vic-fire-danger-card.js` and select **JavaScript Module**.
+#### HACS (Recommended)
+1. Open **HACS** in Home Assistant.
+2. Go to **Integrations**.
+3. Click the three dots (top right) → **Custom repositories**.
+4. Add `https://github.com/joelg12345/victoria-fire-danger` as an **Integration**.
+5. Search for "**Victoria Fire Danger Ratings**" and click **Download**.
+6. **🛑 IMPORTANT: Restart Home Assistant required after installation.**
+
+#### Manual Installation
+1. Download the latest release.
+2. Extract the `victoria_fire_danger` folder to your `/config/custom_components/` directory.
+3. **🛑 IMPORTANT: Restart Home Assistant required after installation.**
+
+### 2. Configuration
+
+1. After restarting, go to **Settings** → **Devices & Services**.
+2. Click **+ Add Integration**.
+3. Search for "**Victoria Fire Danger Ratings**".
+4. Select your **Fire District** from the dropdown.
+5. Click **Submit**.
+
+### 3. Setup Custom Card
+
+**The custom card is automatically registered for you!** Once the integration is configured, you can add the card to your dashboard immediately. No manual resource management is required.
 
 ---
 
-## Dashboard Usage
+## 🎨 Using the Custom Card
 
-Add a **Manual** card to your dashboard and use the following configuration:
+Add a **Manual** card to your dashboard and use the following YAML:
 
 ```yaml
 type: custom:vic-fire-danger-card
-entity: sensor.central_rating_today
-
+entity: sensor.central_fire_danger_rating
 ```
 
-### Card Behavior
+---
 
-* **Dynamic Needle:** The needle moves automatically to match the rating (MODERATE, HIGH, EXTREME, CATASTROPHIC).
-* **Fire Ban Alerts:** Displays a prominent "Total Fire Ban" warning icon and text when a ban is declared.
-* **Forecast Grid:** View the next three days of ratings at a glance at the bottom of the card.
-* **No Rating Mode:** During the off-season, the card displays a clean white "No Rating" state.
+## 📊 Monitored Districts
+
+The integration supports all 9 Victorian fire districts:
+
+| District | Sensor Prefix (Example) |
+| :--- | :--- |
+| **Central** | `sensor.central_` |
+| **North Central** | `sensor.north_central_` |
+| **Northern Country** | `sensor.northern_country_` |
+| **North East** | `sensor.north_east_` |
+| **East Gippsland** | `sensor.east_gippsland_` |
+| **West Gippsland** | `sensor.west_gippsland_` |
+| **Wimmera** | `sensor.wimmera_` |
+| **South West** | `sensor.south_west_` |
+| **Mallee** | `sensor.mallee_` |
 
 ---
 
-## Credits & Attribution
+## 🔔 Automation Example
 
-* **Original Logic:** This integration is based on and inspired by the work of [@vwylaw](https://github.com/vwylaw).
+Get a notification on your phone when fire danger reaches EXTREME:
+
+```yaml
+automation:
+  - alias: "Fire Danger EXTREME Alert"
+    trigger:
+      - platform: state
+        entity_id: sensor.central_fire_danger_rating
+        to: "EXTREME"
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "⚠️ EXTREME Fire Danger"
+          message: "Fire danger is EXTREME for the Central District. Take action now!"
+```
+
+---
+
+## 🛠️ Troubleshooting
+
+### Card Not Appearing?
+1. The integration registers the card at `victoria_fire_danger_ui/vic-fire-danger-card.js`.
+2. Perform a **hard refresh** in your browser (**Ctrl+Shift+R** or **Cmd+Shift+R**).
+3. Check **Settings** → **Dashboards** → **Resources** to ensure the entry exists.
+
+---
+
+## 📜 Credits & Attribution
+
+* **Original Logic:** This integration is based on and inspired by the NSW RFS work of [@vwylaw](https://github.com/vwylaw).
 * **Data Sourced From:** [Country Fire Authority (CFA) Victoria](https://www.cfa.vic.gov.au/).
-* **Design:** Modernized Australian Fire Danger Rating (AFDRS) gauge card.
+* **License:** MIT License.
 
----
-
-**Disclaimer:** This integration is not affiliated with, or endorsed by, the CFA. Always refer to official sources for life-safety information.
+> **Disclaimer:** This integration is not affiliated with, or endorsed by, the CFA. Always refer to official sources and the VicEmergency app for life-safety information.
