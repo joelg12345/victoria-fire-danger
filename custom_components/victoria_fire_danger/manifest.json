@@ -4,7 +4,7 @@
     "after_dependencies": ["http"],
     "codeowners": ["@joelg12345"],
     "config_flow": true,
-    "documentation": "https://www.cfa.vic.gov.au/warnings-restrictions/fire-bans-ratings-and-restrictions/total-fire-bans-fire-danger-ratings",
+    "documentation": "https://github.com/joelg12345/victoria-fire-danger",
     "integration_type": "service",
     "iot_class": "cloud_polling",
     "requirements": ["beautifulsoup4"],
