@@ -77,5 +77,3 @@ entity: sensor.central_rating_today
 ---
 
 **Disclaimer:** This integration is not affiliated with, or endorsed by, the CFA. Always refer to official sources for life-safety information.
-
-```
