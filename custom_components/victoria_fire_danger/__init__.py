@@ -2,15 +2,20 @@
 from __future__ import annotations
 
 import os
+
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.components.http import StaticPathConfig
+import homeassistant.helpers.config_validation as cv
 
 from .const import DOMAIN
 from .sensor import VictoriaFireDangerCoordinator
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
+
+# This tells Home Assistant that this integration is only configured via the UI
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Victoria Fire Danger component."""
