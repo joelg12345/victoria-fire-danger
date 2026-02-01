@@ -5,6 +5,7 @@
     "codeowners": ["@joelg12345"],
     "config_flow": true,
     "documentation": "https://github.com/joelg12345/victoria-fire-danger",
+    "issue_tracker": "https://github.com/joelg12345/victoria-fire-danger/issues",
     "integration_type": "service",
     "iot_class": "cloud_polling",
     "requirements": ["beautifulsoup4"],
