@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Victoria Fire Danger Setup",
+        "description": "Select the districts you want to monitor. Selecting 'All Districts' will create sensors for the entire state.",
+        "data": {
+          "districts": "Districts to track"
+        }
+      }
+    }
+  }
+}
