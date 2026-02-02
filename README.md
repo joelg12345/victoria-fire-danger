@@ -3,7 +3,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/joelg12345/victoria-fire-danger?style=social)](https://github.com/joelg12345/victoria-fire-danger)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub release](https://img.shields.io/github/release/joelg12345/victoria-fire-danger.svg)](https://github.com/joelg12345/victoria-fire-danger/releases)
-[![License](https://img.shields.io/github/license/joelg12345/victoria-fire-danger.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/joelg12345/victoria-fire-danger)](https://github.com/joelg12345/victoria-fire-danger/blob/main/LICENSE)
 
 A custom Home Assistant integration and custom frontend card that fetches official fire danger ratings and total fire ban data directly from the Victoria CFA. Features a specialized "roadside-style" gauge card matching the official Australian Fire Danger Rating (AFDRS) signage!
 
