@@ -191,7 +191,7 @@ if (!customElements.get('vic-fire-danger-card')) {
 }
 
 console.info(
-  '%c VIC-FIRE-DANGER-CARD %c Version 1.0.6 ',
+  '%c VIC-FIRE-DANGER-CARD %c Version 1.0.7 ',
   'color: white; background: #ce161e; font-weight: 700;',
   'color: #ce161e; background: white; font-weight: 700;'
 );
