@@ -1,5 +1,6 @@
 # 🔥 Victoria Fire Danger Ratings for Home Assistant
 
+[![GitHub Stars](https://img.shields.io/github/stars/joelg12345/victoria-fire-danger?style=social)](https://github.com/joelg12345/victoria-fire-danger)
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub release](https://img.shields.io/github/release/joelg12345/victoria-fire-danger.svg)](https://github.com/joelg12345/victoria-fire-danger/releases)
 [![License](https://img.shields.io/github/license/joelg12345/victoria-fire-danger.svg)](LICENSE)
