@@ -8,7 +8,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import dt as dt_util
-from .const import DOMAIN, CFA_FEED_URL, SCAN_INTERVAL_MINUTES, VICTORIA_DISTRICTS
+from .const import DOMAIN, CFA_FEED_URL, SCAN_INTERVAL_MINUTES, VICTORIA_DISTRICTS, RATING_ICONS
 
 _LOGGER = logging.getLogger(__name__)
 
