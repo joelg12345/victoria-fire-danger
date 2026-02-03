@@ -49,7 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
     """Register Lovelace resource for the custom card."""
-    resource_url = f"/{DOMAIN}_ui/vic-fire-danger-card.js?v=1.0.8-beta1"
+    resource_url = f"/{DOMAIN}_ui/vic-fire-danger-card.js?v=1.0.8-beta2"
     
     if "lovelace" not in hass.data:
         return
