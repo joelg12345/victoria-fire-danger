@@ -1,5 +1,6 @@
-"""Sensor platform for Victoria Fire Danger - Synced with NSW Logic."""
+"""Sensor platform for Victoria Fire Danger."""
 import logging
+import time
 import xml.etree.ElementTree as ET
 from datetime import timedelta, datetime
 from bs4 import BeautifulSoup
@@ -69,6 +70,9 @@ class VictoriaFireDangerCoordinator(DataUpdateCoordinator):
         self.last_update_time = None
 
     async def _async_update_data(self):
+        """Fetch and parse CFA data efficiently."""
+        start_time = time.perf_counter() # Start the timer
+        
         try:
             session = async_get_clientsession(self.hass)
             async with async_timeout.timeout(15):
@@ -88,31 +92,44 @@ class VictoriaFireDangerCoordinator(DataUpdateCoordinator):
                     diff = (item_date - today).days
                     if diff < 0 or diff > 3: continue
                     day_key = str(diff)
-                except: continue
+                except Exception:
+                    continue
 
-                desc = item.find("description").text
-                parts = desc.split("Fire Danger Ratings")
-                ban_section = parts[0]
-                rate_section = parts[1] if len(parts) > 1 else ""
+                # --- OPTIMIZATION: Parse BeautifulSoup once per Day (RSS Item) ---
+                desc_html = item.find("description").text
+                soup = BeautifulSoup(desc_html, "html.parser")
+                
+                # Get all text at once to avoid repetitive DOM traversal
+                full_text = soup.get_text(separator="\n")
+                
+                # Separate sections to avoid cross-contamination
+                parts = full_text.split("Fire Danger Ratings")
+                ban_text = parts[0]
+                rate_text = parts[1] if len(parts) > 1 else ""
 
                 for d in VICTORIA_DISTRICTS:
                     search_name = "West and South Gippsland" if d == "West Gippsland" else d
                     
-                    # Ban Parsing (Improved for "YES" anywhere in line)
-                    ban_soup = BeautifulSoup(ban_section, "html.parser")
+                    # 1. Ban Parsing (Fast String Search)
                     data[d][f"ban_{day_key}"] = "No"
-                    for line in ban_soup.get_text(separator="\n").split("\n"):
+                    for line in ban_text.split("\n"):
                         if search_name.lower() in line.lower() and "YES" in line.upper():
                             data[d][f"ban_{day_key}"] = "Yes"
+                            break
 
-                    # Rating Parsing
-                    rate_soup = BeautifulSoup(rate_section, "html.parser")
+                    # 2. Rating Parsing (Fast String Search)
                     data[d][f"rate_{day_key}"] = "NO RATING"
-                    for line in rate_soup.get_text(separator="\n").split("\n"):
+                    for line in rate_text.split("\n"):
                         if search_name.lower() in line.lower() and ":" in line:
                             val = line.split(":")[-1].strip().upper().split("-")[0].strip()
                             data[d][f"rate_{day_key}"] = val
+                            break
             
+            # --- Performance Logging ---
+            end_time = time.perf_counter()
+            elapsed = (end_time - start_time) * 1000
+            _LOGGER.debug("CFA Update parsed %s districts in %.2fms", len(VICTORIA_DISTRICTS), elapsed)
+
             self.last_update_time = dt_util.now()
             return data
         except Exception as err:
