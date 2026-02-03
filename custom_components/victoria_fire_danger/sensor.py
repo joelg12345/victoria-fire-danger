@@ -37,6 +37,18 @@ class VicFireSensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = f"{DOMAIN}_{slug}_{sensor_type}"
 
     @property
+    def icon(self):
+        """Return the icon to use in the frontend based on the state."""
+        state_val = str(self.state).upper()
+        
+        # Logic for Total Fire Ban sensors
+        if "total_fire_ban" in self._type:
+            return "mdi:fire-alert" if state_val == "YES" else "mdi:fire-off"
+        
+        # Logic for Fire Danger Rating sensors using RATING_ICONS from const.py
+        return RATING_ICONS.get(state_val, "mdi:shield-check")
+
+    @property
     def state(self):
         if not self.coordinator.data: return "UNKNOWN"
         day_map = {"today": "0", "tomorrow": "1", "day_3": "2", "day_4": "3"}
