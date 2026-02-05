@@ -8,7 +8,8 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
 
-DOMAIN = "victoria_fire_danger"
+from .const import DOMAIN
+
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
