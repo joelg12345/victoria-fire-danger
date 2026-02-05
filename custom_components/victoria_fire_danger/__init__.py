@@ -44,14 +44,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
     """Register Lovelace resource for the custom card."""
-
+    
     resource_url = f"/{DOMAIN}_ui/vic-fire-danger-card.js?v=1.0.7"
 
+    # Check if Lovelace is loaded in hass.data
     if "lovelace" not in hass.data:
-        # Lovelace not initialized yet; skip silently
         return
 
-    resources = hass.data["lovelace"].get("resources")
+    ll_data = hass.data["lovelace"]
+    resources = None
+
+    # --- FIX START ---
+    # Handle both new (object) and old (dict) Lovelace data structures
+    if hasattr(ll_data, "resources"):
+        # New Home Assistant (LovelaceData object)
+        resources = ll_data.resources
+    elif isinstance(ll_data, dict):
+        # Older Home Assistant (Dictionary)
+        resources = ll_data.get("resources")
+    # --- FIX END ---
+
     if resources:
         # Skip if already registered
         if any(res.get("url") == resource_url for res in resources.async_items()):
