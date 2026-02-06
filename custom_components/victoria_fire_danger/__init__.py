@@ -18,7 +18,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Victoria Fire Danger component."""
 
-    # 1. Register the virtual path for the custom card
+    # Register the virtual path for the custom card
     www_path = os.path.join(os.path.dirname(__file__), "www")
     await hass.http.async_register_static_paths([
         StaticPathConfig(
@@ -28,7 +28,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         )
     ])
 
-    # 2. Automatically register the Lovelace resource (silent if Lovelace not ready)
+    # Automatically register the Lovelace resource (silent if Lovelace not ready)
     hass.async_create_task(_async_register_lovelace_resource(hass))
 
     return True
@@ -37,9 +37,18 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Victoria Fire Danger from a config entry."""
 
-    # Just forward the platform setup (coordinator is created in sensor.py)
+    # Forward platform setup (coordinator is created in sensor.py)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Listen for options updates and reload the entry
+    entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
+
     return True
+
+
+async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload integration when options are updated."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
@@ -54,15 +63,11 @@ async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
     ll_data = hass.data["lovelace"]
     resources = None
 
-    # --- FIX START ---
     # Handle both new (object) and old (dict) Lovelace data structures
     if hasattr(ll_data, "resources"):
-        # New Home Assistant (LovelaceData object)
         resources = ll_data.resources
     elif isinstance(ll_data, dict):
-        # Older Home Assistant (Dictionary)
         resources = ll_data.get("resources")
-    # --- FIX END ---
 
     if resources:
         # Skip if already registered
