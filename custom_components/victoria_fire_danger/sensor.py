@@ -18,12 +18,24 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Victoria Fire Danger sensors from a config entry."""
-    coordinator = VictoriaFireDangerCoordinator(hass)
-    await coordinator.async_config_entry_first_refresh()
 
-    districts = entry.data.get("districts", VICTORIA_DISTRICTS)
+    # 1. Check if coordinator already exists for this entry
+    if not hass.data.get(DOMAIN):
+        hass.data.setdefault(DOMAIN, {})
+
+    if entry.entry_id not in hass.data[DOMAIN]:
+        # Create the coordinator and store it
+        coordinator = VictoriaFireDangerCoordinator(hass)
+        await coordinator.async_config_entry_first_refresh()
+        hass.data[DOMAIN][entry.entry_id] = coordinator
+    else:
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+
+    # 2. Get districts from options, fallback to initial config data
+    districts = entry.options.get("districts", entry.data.get("districts", VICTORIA_DISTRICTS))
     entities = []
 
+    # 3. Build sensors for the selected districts
     for district in districts:
         types = [
             "rating_today", "rating_tomorrow", "rating_day_3", "rating_day_4",
@@ -32,7 +44,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
         for s_type in types:
             entities.append(VicFireSensor(coordinator, district, s_type))
 
-    async_add_entities(entities)
+    # 4. Add sensors to HA
+    async_add_entities(entities, True)
+
 
 
 class VicFireSensor(CoordinatorEntity, SensorEntity):
