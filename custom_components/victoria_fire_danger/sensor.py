@@ -7,68 +7,118 @@ from datetime import timedelta, datetime
 from bs4 import BeautifulSoup
 import async_timeout
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, CFA_FEED_URL, SCAN_INTERVAL_MINUTES, VICTORIA_DISTRICTS, RATING_ICONS
+from .const import (
+    DOMAIN,
+    CFA_FEED_URL,
+    SCAN_INTERVAL_MINUTES,
+    VICTORIA_DISTRICTS,
+    RATING_ICONS,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+SENSOR_TYPES = [
+    "rating_today",
+    "rating_tomorrow",
+    "rating_day_3",
+    "rating_day_4",
+    "total_fire_ban_today",
+    "total_fire_ban_tomorrow",
+    "total_fire_ban_day_3",
+    "total_fire_ban_day_4",
+]
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Victoria Fire Danger sensors from a config entry."""
+    coordinator = VictoriaFireDangerCoordinator(hass)
+    await coordinator.async_config_entry_first_refresh()
 
-    # 1. Check if coordinator already exists for this entry
-    if not hass.data.get(DOMAIN):
-        hass.data.setdefault(DOMAIN, {})
+    selected_districts = entry.options.get(
+        "districts", entry.data.get("districts", VICTORIA_DISTRICTS)
+    )
 
-    if entry.entry_id not in hass.data[DOMAIN]:
-        # Create the coordinator and store it
-        coordinator = VictoriaFireDangerCoordinator(hass)
-        await coordinator.async_config_entry_first_refresh()
-        hass.data[DOMAIN][entry.entry_id] = coordinator
-    else:
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+    _LOGGER.debug(
+        "Setting up Victoria Fire Danger sensors. Districts: %s",
+        selected_districts,
+    )
 
-    # 2. Get districts from options, fallback to initial config data
-    districts = entry.options.get("districts", entry.data.get("districts", VICTORIA_DISTRICTS))
+    # --- ENTITY REGISTRY CLEANUP ---
+    ent_reg = async_get_entity_registry(hass)
+
+    valid_unique_ids: set[str] = set()
     entities = []
 
-    # 3. Build sensors for the selected districts
-    for district in districts:
-        types = [
-            "rating_today", "rating_tomorrow", "rating_day_3", "rating_day_4",
-            "total_fire_ban_today", "total_fire_ban_tomorrow", "total_fire_ban_day_3", "total_fire_ban_day_4"
-        ]
-        for s_type in types:
-            entities.append(VicFireSensor(coordinator, district, s_type))
+    for district in selected_districts:
+        for sensor_type in SENSOR_TYPES:
+            unique_id = f"{DOMAIN}_{district.lower().replace(' ', '_')}_{sensor_type}"
+            valid_unique_ids.add(unique_id)
 
-    # 4. Add sensors to HA
-    async_add_entities(entities, True)
+            entities.append(
+                VicFireSensor(
+                    coordinator=coordinator,
+                    district=district,
+                    sensor_type=sensor_type,
+                    entry_id=entry.entry_id,
+                )
+            )
 
+    # Remove stale entities
+    removed = 0
+    for entity_entry in list(ent_reg.entities.values()):
+        if (
+            entity_entry.platform == DOMAIN
+            and entity_entry.config_entry_id == entry.entry_id
+            and entity_entry.unique_id not in valid_unique_ids
+        ):
+            _LOGGER.info(
+                "Removing stale Victoria Fire Danger entity: %s",
+                entity_entry.entity_id,
+            )
+            ent_reg.async_remove(entity_entry.entity_id)
+            removed += 1
+
+    _LOGGER.debug(
+        "Entity cleanup complete. Removed %d stale entities.",
+        removed,
+    )
+
+    async_add_entities(entities)
 
 
 class VicFireSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Victoria Fire Danger sensor."""
 
-    def __init__(self, coordinator, district, sensor_type):
+    def __init__(self, coordinator, district, sensor_type, entry_id):
         super().__init__(coordinator)
         self._district = district
         self._type = sensor_type
 
-        # Let HA assign the entity_id automatically
         self._attr_name = f"{district} {sensor_type.replace('_', ' ').title()}"
-        self._attr_unique_id = f"{DOMAIN}_{district.lower().replace(' ', '_')}_{sensor_type}"
+        self._attr_unique_id = (
+            f"{DOMAIN}_{district.lower().replace(' ', '_')}_{sensor_type}"
+        )
+        self._attr_has_entity_name = True
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry_id)},
+            "name": "Victoria Fire Danger",
+            "manufacturer": "CFA Victoria",
+        }
 
     @property
     def icon(self):
-        """Return the icon to use in the frontend based on the state."""
         state_val = str(self.state).upper()
-
         if "total_fire_ban" in self._type:
             return "mdi:fire-alert" if state_val == "YES" else "mdi:fire-off"
-
         return RATING_ICONS.get(state_val, "mdi:shield-check")
 
     @property
@@ -79,13 +129,22 @@ class VicFireSensor(CoordinatorEntity, SensorEntity):
         day_map = {"today": "0", "tomorrow": "1", "day_3": "2", "day_4": "3"}
         day_idx = next((v for k, v in day_map.items() if k in self._type), "0")
         prefix = "ban_" if "total_fire_ban" in self._type else "rate_"
-        return self.coordinator.data.get(self._district, {}).get(f"{prefix}{day_idx}", "No" if "ban" in prefix else "NO RATING")
+
+        return self.coordinator.data.get(self._district, {}).get(
+            f"{prefix}{day_idx}",
+            "No" if prefix == "ban_" else "NO RATING",
+        )
 
     @property
     def extra_state_attributes(self):
         return {
-            "area_name": self._district,
-            "last_updated": self.coordinator.last_update_time.isoformat() if self.coordinator.last_update_time else None
+            "district": self._district,
+            "sensor_type": self._type,
+            "last_updated": (
+                self.coordinator.last_update_time.isoformat()
+                if self.coordinator.last_update_time
+                else None
+            ),
         }
 
 
@@ -97,13 +156,12 @@ class VictoriaFireDangerCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="Victoria Fire Danger",
-            update_interval=timedelta(minutes=SCAN_INTERVAL_MINUTES)
+            update_interval=timedelta(minutes=SCAN_INTERVAL_MINUTES),
         )
         self.last_update_time = None
 
     async def _async_update_data(self):
-        """Fetch and parse CFA data efficiently."""
-        start_time = time.perf_counter()
+        start = time.perf_counter()
 
         try:
             session = async_get_clientsession(self.hass)
@@ -117,48 +175,53 @@ class VictoriaFireDangerCoordinator(DataUpdateCoordinator):
             today = dt_util.now().date()
 
             for item in items:
-                title_str = item.find("title").text
+                title = item.find("title").text
                 try:
-                    date_part = title_str.split(",")[-1].strip()
+                    date_part = title.split(",")[-1].strip()
                     item_date = datetime.strptime(date_part, "%d %B %Y").date()
                     diff = (item_date - today).days
                     if diff < 0 or diff > 3:
                         continue
-                    day_key = str(diff)
                 except Exception:
                     continue
 
-                desc_html = item.find("description").text
-                soup = BeautifulSoup(desc_html, "html.parser")
-                full_text = soup.get_text(separator="\n")
+                soup = BeautifulSoup(item.find("description").text, "html.parser")
+                text = soup.get_text(separator="\n")
+                ban_text, *rate_parts = text.split("Fire Danger Ratings")
+                rate_text = rate_parts[0] if rate_parts else ""
 
-                # Split ban vs rating sections
-                parts = full_text.split("Fire Danger Ratings")
-                ban_text = parts[0]
-                rate_text = parts[1] if len(parts) > 1 else ""
+                for district in VICTORIA_DISTRICTS:
+                    search = (
+                        "West and South Gippsland"
+                        if district == "West Gippsland"
+                        else district
+                    )
 
-                for d in VICTORIA_DISTRICTS:
-                    search_name = "West and South Gippsland" if d == "West Gippsland" else d
+                    data[district][f"ban_{diff}"] = (
+                        "Yes"
+                        if any(
+                            search.lower() in l.lower() and "YES" in l.upper()
+                            for l in ban_text.splitlines()
+                        )
+                        else "No"
+                    )
 
-                    # Parse Total Fire Ban
-                    data[d][f"ban_{day_key}"] = "No"
-                    for line in ban_text.split("\n"):
-                        if search_name.lower() in line.lower() and "YES" in line.upper():
-                            data[d][f"ban_{day_key}"] = "Yes"
+                    data[district][f"rate_{diff}"] = "NO RATING"
+                    for line in rate_text.splitlines():
+                        if search.lower() in line.lower() and ":" in line:
+                            data[district][f"rate_{diff}"] = (
+                                line.split(":")[-1]
+                                .strip()
+                                .upper()
+                                .split("-")[0]
+                            )
                             break
-
-                    # Parse Fire Danger Ratings
-                    data[d][f"rate_{day_key}"] = "NO RATING"
-                    for line in rate_text.split("\n"):
-                        if search_name.lower() in line.lower() and ":" in line:
-                            val = line.split(":")[-1].strip().upper().split("-")[0].strip()
-                            data[d][f"rate_{day_key}"] = val
-                            break
-
-            elapsed = (time.perf_counter() - start_time) * 1000
-            _LOGGER.debug("CFA Update parsed %s districts in %.2fms", len(VICTORIA_DISTRICTS), elapsed)
 
             self.last_update_time = dt_util.now()
+            _LOGGER.debug(
+                "CFA update completed in %.2f ms",
+                (time.perf_counter() - start) * 1000,
+            )
             return data
 
         except Exception as err:
