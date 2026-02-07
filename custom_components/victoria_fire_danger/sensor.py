@@ -40,19 +40,18 @@ SENSOR_TYPES = [
 
 async def async_setup_entry(hass, entry, async_add_entities):
     """Set up Victoria Fire Danger sensors from a config entry."""
-    coordinator = VictoriaFireDangerCoordinator(hass)
-    await coordinator.async_config_entry_first_refresh()
-
     selected_districts = entry.options.get(
         "districts", entry.data.get("districts", VICTORIA_DISTRICTS)
     )
+
+    coordinator = VictoriaFireDangerCoordinator(hass, selected_districts)
+    await coordinator.async_config_entry_first_refresh()
 
     _LOGGER.debug(
         "Setting up Victoria Fire Danger sensors. Districts: %s",
         selected_districts,
     )
 
-    # --- ENTITY REGISTRY CLEANUP ---
     ent_reg = async_get_entity_registry(hass)
 
     valid_unique_ids: set[str] = set()
@@ -73,7 +72,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
             )
 
     # Remove stale entities
-    removed = 0
     for entity_entry in list(ent_reg.entities.values()):
         if (
             entity_entry.platform == DOMAIN
@@ -85,12 +83,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 entity_entry.entity_id,
             )
             ent_reg.async_remove(entity_entry.entity_id)
-            removed += 1
-
-    _LOGGER.debug(
-        "Entity cleanup complete. Removed %d stale entities.",
-        removed,
-    )
 
     async_add_entities(entities)
 
@@ -137,7 +129,12 @@ class VicFireSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self):
+        """
+        ⚠️ DO NOT RENAME `area_name`
+        This attribute is REQUIRED by vic-fire-danger-card.js
+        """
         return {
+            "area_name": self._district,  # <-- REQUIRED BY CARD
             "district": self._district,
             "sensor_type": self._type,
             "last_updated": (
@@ -151,13 +148,14 @@ class VicFireSensor(CoordinatorEntity, SensorEntity):
 class VictoriaFireDangerCoordinator(DataUpdateCoordinator):
     """Coordinator to fetch Victoria Fire Danger data periodically."""
 
-    def __init__(self, hass):
+    def __init__(self, hass, districts):
         super().__init__(
             hass,
             _LOGGER,
             name="Victoria Fire Danger",
             update_interval=timedelta(minutes=SCAN_INTERVAL_MINUTES),
         )
+        self.districts = districts
         self.last_update_time = None
 
     async def _async_update_data(self):
@@ -171,7 +169,7 @@ class VictoriaFireDangerCoordinator(DataUpdateCoordinator):
 
             root = ET.fromstring(text)
             items = root.findall(".//item")
-            data = {d: {} for d in VICTORIA_DISTRICTS}
+            data = {d: {} for d in self.districts}
             today = dt_util.now().date()
 
             for item in items:
@@ -190,7 +188,7 @@ class VictoriaFireDangerCoordinator(DataUpdateCoordinator):
                 ban_text, *rate_parts = text.split("Fire Danger Ratings")
                 rate_text = rate_parts[0] if rate_parts else ""
 
-                for district in VICTORIA_DISTRICTS:
+                for district in self.districts:
                     search = (
                         "West and South Gippsland"
                         if district == "West Gippsland"
