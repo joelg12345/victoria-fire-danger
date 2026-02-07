@@ -9,5 +9,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/joelg12345/victoria-fire-danger/issues",
   "requirements": ["beautifulsoup4"],
-  "version": "1.1.0-beta6"
+  "version": "1.1.0-beta7"
 }
