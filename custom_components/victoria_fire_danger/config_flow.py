@@ -74,11 +74,9 @@ class VictoriaFireDangerOptionsFlow(config_entries.OptionsFlow):
             if "All Districts" in selected:
                 user_input["districts"] = VICTORIA_DISTRICTS
 
-            # Update options and reload
-            return self.async_create_entry(
-                title="Victoria Fire Danger Options",
-                data={"districts": user_input["districts"]}
-            )
+            # --- Surgical fix ---
+            # Instead of calling async_update_option, return data in async_create_entry
+            return self.async_create_entry(title="", data=user_input)
 
         # Show the options form
         current_districts = self._config_entry.options.get(
