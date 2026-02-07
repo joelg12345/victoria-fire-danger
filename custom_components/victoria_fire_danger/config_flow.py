@@ -12,7 +12,6 @@ from homeassistant.helpers.selector import (
 
 from .const import DOMAIN, VICTORIA_DISTRICTS
 
-# Define options for the selector
 DISTRICT_OPTIONS = ["All Districts"] + VICTORIA_DISTRICTS
 
 
@@ -22,23 +21,22 @@ class VictoriaFireDangerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
-        """Handle the initial step."""
-        # Prevent multiple instances
+        """Initial step: ask which districts to monitor."""
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
 
         if user_input is not None:
-            # Process "All Districts"
+            # Resolve "All Districts" to the full list
             selected = user_input.get("districts", ["All Districts"])
             if "All Districts" in selected:
-                user_input["districts"] = VICTORIA_DISTRICTS
+                selected = VICTORIA_DISTRICTS
 
             return self.async_create_entry(
                 title="Victoria Fire Danger",
-                data={"districts": user_input["districts"]}
+                data={"districts": selected},
             )
 
-        # Show the form
+        # Show selection form
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
@@ -64,24 +62,20 @@ class VictoriaFireDangerOptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self, config_entry):
         """Initialize options flow."""
-        self._config_entry = config_entry
+        self._config_entry = config_entry  # use a private attribute
 
     async def async_step_init(self, user_input=None):
-        """Manage the options."""
-        if user_input is not None:
-            # Handle "All Districts"
-            selected = user_input.get("districts", ["All Districts"])
-            if "All Districts" in selected:
-                user_input["districts"] = VICTORIA_DISTRICTS
-
-            # --- Surgical fix ---
-            # Instead of calling async_update_option, return data in async_create_entry
-            return self.async_create_entry(title="", data=user_input)
-
-        # Show the options form
+        """Manage options."""
         current_districts = self._config_entry.options.get(
             "districts", self._config_entry.data.get("districts", ["All Districts"])
         )
+
+        if user_input is not None:
+            selected = user_input.get("districts", current_districts)
+            if "All Districts" in selected:
+                selected = VICTORIA_DISTRICTS
+
+            return self.async_create_entry(title="", data={"districts": selected})
 
         return self.async_show_form(
             step_id="init",
