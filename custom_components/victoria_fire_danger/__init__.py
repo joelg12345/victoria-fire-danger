@@ -25,22 +25,39 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         )
     ])
 
-    # Register Lovelace resource ONCE per HA start
+    # Register Lovelace resource safely (exactly once)
     if not hass.data.get(_LOVELACE_KEY):
-        hass.data[_LOVELACE_KEY] = True
 
         async def register_card(event=None):
             """Register JS card after Home Assistant starts."""
             resource_url = f"/{DOMAIN}_ui/vic-fire-danger-card.js?v=1.1.1"
+
+            # Lovelace not ready yet → retry shortly
             if "lovelace" not in hass.data:
+                hass.async_create_task(register_card())
                 return
+
             ll_data = hass.data["lovelace"]
-            resources = getattr(ll_data, "resources", None) or ll_data.get("resources", None)
+            resources = (
+                getattr(ll_data, "resources", None)
+                if hasattr(ll_data, "resources")
+                else ll_data.get("resources")
+            )
+
             if not resources:
                 return
-            if any(getattr(res, "url", None) == resource_url for res in resources.async_items()):
+
+            # Already registered → mark and stop
+            if any(res.get("url") == resource_url for res in resources.async_items()):
+                hass.data[_LOVELACE_KEY] = True
                 return
-            await resources.async_create_item({"res_type": "module", "url": resource_url})
+
+            await resources.async_create_item(
+                {"res_type": "module", "url": resource_url}
+            )
+
+            # ✅ Mark as registered ONLY after success
+            hass.data[_LOVELACE_KEY] = True
 
         hass.bus.async_listen_once("homeassistant_start", register_card)
 
