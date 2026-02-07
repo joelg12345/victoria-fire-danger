@@ -11,14 +11,15 @@ import homeassistant.helpers.config_validation as cv
 from .const import DOMAIN
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
-
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+_LOVELACE_KEY = f"{DOMAIN}_lovelace_registered"
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Victoria Fire Danger component."""
 
-    # Register the virtual path for the custom card
+    # Register static path for custom card
     www_path = os.path.join(os.path.dirname(__file__), "www")
     await hass.http.async_register_static_paths([
         StaticPathConfig(
@@ -28,8 +29,10 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         )
     ])
 
-    # Automatically register the Lovelace resource (silent if Lovelace not ready)
-    hass.async_create_task(_async_register_lovelace_resource(hass))
+    # Register Lovelace resource ONCE per HA start
+    if not hass.data.get(_LOVELACE_KEY):
+        hass.data[_LOVELACE_KEY] = True
+        hass.async_create_task(_async_register_lovelace_resource(hass))
 
     return True
 
@@ -37,10 +40,9 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Victoria Fire Danger from a config entry."""
 
-    # Forward platform setup (coordinator is created in sensor.py)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Listen for options updates and reload the entry
+    # Reload integration when options change
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
 
     return True
@@ -53,32 +55,34 @@ async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 async def _async_register_lovelace_resource(hass: HomeAssistant) -> None:
     """Register Lovelace resource for the custom card."""
-    
+
     resource_url = f"/{DOMAIN}_ui/vic-fire-danger-card.js?v=1.0.7"
 
-    # Check if Lovelace is loaded in hass.data
+    # Wait until Lovelace exists
     if "lovelace" not in hass.data:
         return
 
     ll_data = hass.data["lovelace"]
     resources = None
 
-    # Handle both new (object) and old (dict) Lovelace data structures
     if hasattr(ll_data, "resources"):
         resources = ll_data.resources
     elif isinstance(ll_data, dict):
         resources = ll_data.get("resources")
 
-    if resources:
-        # Skip if already registered
-        if any(res.get("url") == resource_url for res in resources.async_items()):
-            return
+    if not resources:
+        return
 
-        if hasattr(resources, "async_create_item"):
-            await resources.async_create_item({
-                "res_type": "module",
-                "url": resource_url
-            })
+    # Skip if already registered
+    if any(res.get("url") == resource_url for res in resources.async_items()):
+        return
+
+    await resources.async_create_item(
+        {
+            "res_type": "module",
+            "url": resource_url,
+        }
+    )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
